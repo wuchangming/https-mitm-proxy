@@ -19,7 +19,6 @@ var req = https.request(options, (res) => {
   var realCert  = res.socket.getPeerCertificate();
 
 
-  var caCertPem;
   var privateKeyPem = fs.readFileSync(path.resolve(__dirname, '../test/ca/spy-debugger.ca.key.pem'), 'utf-8');
 
   console.log('privateKeyPem !!!', privateKeyPem);
