@@ -1,6 +1,7 @@
 const https = require('https');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 
 // var server = https.Server();
 
@@ -9,13 +10,13 @@ const options = {
   cert: fs.readFileSync(path.resolve(__dirname, '../../src/baidu.com.crt.pem'))
 };
 
-var s = https.createServer(options, (req, res) => {
-  res.writeHead(200);
-  res.end('hello world\n');
-}).listen(function(a) {
-    console.log(s._connectionKey);
-});
+var fakeServer = new http.Server();
+fakeServer.listen(0);
 
-s.on('listening', (a) => {
-    console.log(a,s._connectionKey);
+fakeServer.on('listening', () => {
+
+    var address = fakeServer.address();
+
+    console.log(address.port);
+
 });

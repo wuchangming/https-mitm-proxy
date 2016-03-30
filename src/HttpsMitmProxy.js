@@ -6,6 +6,7 @@ const url = require('url');
 const utils = require('./common/utils');
 const fs = require('fs');
 const forge = require('node-forge');
+const _ = require('lodash');
 var pki = forge.pki;
 
 var arrpp;
@@ -18,17 +19,23 @@ module.exports = class HttpsMitmProxy {
     }
     requestFakeServer(reqUrl, callback) {
         var srvUrl = url.parse(`http://${reqUrl}`);
-        console.log(reqUrl);
+        console.log(srvUrl.hostname);
         var preReq = https.request({
             port: srvUrl.port,
             hostname: srvUrl.hostname
         }, (preRes) => {
             var realCert  = preRes.socket.getPeerCertificate();
+            preRes.socket.end();
+            preReq.end();
             console.log(realCert);
             if (Object.keys(realCert).length == 0) {
                 callback(7878);
                 return
             }
+
+            var obj = forge.asn1.fromDer(realCert.raw.toString('binary'));
+            var certificate = forge.pki.certificateFromAsn1(obj);
+            console.log(certificate);
 
             var privateKeyPem = this.caKeyPem;
 
@@ -56,55 +63,36 @@ module.exports = class HttpsMitmProxy {
                 newSubject.push(tem);
             });
 
-            cert.setSubject(newSubject);
+            cert.setSubject(certificate.subject.attributes);
             cert.setIssuer(caCert.subject.attributes);
 
-
+            certificate.subjectaltname && (cert.subjectaltname = certificate.subjectaltname);
             var realSubjectAltName = realCert.subjectaltname;
 
             var dnsString = realSubjectAltName.replace(/DNS:/g, '');
 
             var dnsArr = dnsString.split(',');
 
-            var newAltName = [];
-            dnsArr.map((dns) => {
-                var tem = {};
-                tem.type = 2;
-                tem.value = dns;
-                newAltName.push(tem);
-            });
+            // var newAltName = [];
+            // dnsArr.map((dns) => {
+            //     var tem = {};
+            //     tem.type = 2;
+            //     tem.value = dns;
+            //     newAltName.push(tem);
+            // });
 
+            var subjectAltName = _.find(certificate.extensions, {name: 'subjectAltName'});
+            // console.log('!!!!!!',JSON.stringify(eee));
+            // cert.setExtensions(certificate.extensions);
+            // JSON.stringify(certificate.extensions);
             cert.setExtensions([{
               name: 'basicConstraints',
               critical: true,
               cA: false
-            }, {
-              name: 'keyUsage',
-              keyCertSign: true,
-              digitalSignature: true,
-              nonRepudiation: true,
-              keyEncipherment: true,
-              dataEncipherment: true
-            }, {
-              name: 'extKeyUsage',
-              serverAuth: true,
-              clientAuth: true,
-              codeSigning: true,
-              emailProtection: true,
-              timeStamping: true
-            }, {
-              name: 'nsCertType',
-              client: true,
-              server: true,
-              email: true,
-              objsign: true,
-              sslCA: true,
-              emailCA: true,
-              objCA: true
             },
             {
               name: 'subjectAltName',
-              altNames: newAltName
+              altNames: subjectAltName.altNames
             },
             {
               name: 'subjectKeyIdentifier'
@@ -124,8 +112,10 @@ module.exports = class HttpsMitmProxy {
                     res.end('hello world\n');
                     arrpp = 7878;
                 });
-                callback(7878);
+
             });
+            console.log('create 7878');
+            callback(7878);
 
         });
         preReq.end();

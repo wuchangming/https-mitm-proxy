@@ -17,6 +17,7 @@
   "homepage": "https://github.com/wuchangming/https-mitm-proxy#readme",
   "description": "",
   "dependencies": {
+    "lodash": "^4.6.1",
     "node-forge": "^0.6.39"
   }
 }
